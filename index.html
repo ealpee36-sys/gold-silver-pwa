@@ -1,27 +1,166 @@
+<!DOCTYPE html>
+<html lang="ne">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>आजको सुन चाँदीको मूल्य</title>
+
+  <meta name="theme-color" content="#f5c542" />
+  <link rel="manifest" href="manifest.json" />
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f6f6f6;
+      margin: 0;
+      padding: 16px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    h1 {
+      text-align: center;
+    }
+    .price {
+      font-size: 1.4rem;
+      font-weight: bold;
+      margin-top: 8px;
+    }
+    .muted {
+      color: #666;
+      font-size: 0.9rem;
+    }
+    select, input, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 8px;
+      font-size: 1rem;
+    }
+    button {
+      background: #f5c542;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    footer {
+      text-align: center;
+      font-size: 0.8rem;
+      color: #666;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>आजको सुन र चाँदी</h1>
+<p class="muted" style="text-align:center;">
+  मिति: <span id="today"></span>
+</p>
+
+<div class="card">
+  <h2>सुनको मूल्य</h2>
+  <select id="karat">
+    <option value="1">२४ क्यारेट</option>
+    <option value="0.916">२२ क्यारेट</option>
+    <option value="0.75">१८ क्यारेट</option>
+  </select>
+  <div id="goldPrice" class="price">लोड हुँदैछ...</div>
+</div>
+
+<div class="card">
+  <h2>चाँदीको मूल्य</h2>
+  <div id="silverPrice" class="price">लोड हुँदैछ...</div>
+</div>
+
+<div class="card">
+  <h2>तोला क्याल्कुलेटर</h2>
+  <input type="number" id="tolaInput" placeholder="तोला संख्या" />
+  <div id="totalPrice" class="price"></div>
+</div>
+
+<footer>
+  स्रोत: GoldAPI (USD → NPR अनुमान)
+</footer>
+
 <script>
-const statusEl = document.getElementById("status");
+/* ================= CONFIG ================= */
+const API_KEY = "goldapi-2jdsp19mk3w4i56-io";
+const USD_TO_NPR = 133;        // approx rate
+const OUNCE_TO_TOLA = 0.857142;
 
-async function loadData() {
+/* ================= DATE ================= */
+document.getElementById("today").innerText =
+  new Date().toISOString().split("T")[0];
+
+/* ================= LOAD PRICES ================= */
+let baseGoldPrice = 0;
+
+async function loadPrices() {
+  const goldEl = document.getElementById("goldPrice");
+  const silverEl = document.getElementById("silverPrice");
+
   try {
-    statusEl.innerText = "Loading data...";
-    
-    // TEMP: static fallback (API fail भए पनि app चल्छ)
-    const data = {
-      gold: "NPR 1,65,000 / tola",
-      silver: "NPR 2,000 / tola"
-    };
+    const goldRes = await fetch("https://www.goldapi.io/api/XAU/USD", {
+      headers: { "x-access-token": API_KEY }
+    });
+    const goldData = await goldRes.json();
 
-    document.getElementById("gold").innerText = data.gold;
-    document.getElementById("silver").innerText = data.silver;
+    const silverRes = await fetch("https://www.goldapi.io/api/XAG/USD", {
+      headers: { "x-access-token": API_KEY }
+    });
+    const silverData = await silverRes.json();
 
-  } catch (err) {
-    console.error(err);
-    statusEl.innerText = "Data unavailable (offline)";
-  } finally {
-    // 🔑 THIS IS IMPORTANT
-    statusEl.style.display = "none";
+    baseGoldPrice = goldData.price * USD_TO_NPR * OUNCE_TO_TOLA;
+
+    updateGoldPrice();
+
+    const silverNPR =
+      (silverData.price * USD_TO_NPR * OUNCE_TO_TOLA).toFixed(0);
+
+    silverEl.innerText = `Rs. ${silverNPR} / तोला`;
+
+  } catch (e) {
+    console.warn("API fail, fallback data used");
+
+    baseGoldPrice = 165000;
+    goldEl.innerText = "Rs. 1,65,000 / तोला";
+    silverEl.innerText = "Rs. 2,000 / तोला";
   }
 }
 
-window.onload = loadData;
+/* ================= GOLD KARAT ================= */
+function updateGoldPrice() {
+  const factor = document.getElementById("karat").value;
+  const price = (baseGoldPrice * factor).toFixed(0);
+  document.getElementById("goldPrice").innerText =
+    `Rs. ${price} / तोला`;
+}
+
+/* ================= CALCULATOR ================= */
+document.getElementById("tolaInput").addEventListener("input", e => {
+  const tola = e.target.value;
+  if (!tola) return;
+  const factor = document.getElementById("karat").value;
+  const total = (baseGoldPrice * factor * tola).toFixed(0);
+  document.getElementById("totalPrice").innerText =
+    `कुल मूल्य: Rs. ${total}`;
+});
+
+document.getElementById("karat").addEventListener("change", updateGoldPrice);
+
+window.onload = loadPrices;
+
+/* ================= SERVICE WORKER ================= */
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("service-worker.js");
+}
 </script>
+
+</body>
+</html>
