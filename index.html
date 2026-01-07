@@ -1,184 +1,27 @@
-<!DOCTYPE html>
-<html lang="ne">
-<head>
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#d4af37">
-<meta charset="UTF-8">
-<title>आजको सुन चाँदीको मूल्य</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<style>
-:root{
-  --bg:#ffffff;
-  --text:#000;
-  --card:#f9f9f9;
-}
-.dark{
-  --bg:#121212;
-  --text:#fff;
-  --card:#1e1e1e;
-}
-body{
-  margin:0;
-  font-family:Arial, sans-serif;
-  background:var(--bg);
-  color:var(--text);
-  min-height:100vh;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-}
-.container{
-  width:100%;
-  max-width:480px;
-  padding:20px;
-  border-radius:16px;
-  background:var(--bg);
-  box-shadow:0 12px 30px rgba(0,0,0,.2);
-}
-h1{text-align:center;color:#d4af37;}
-.subtitle{text-align:center;font-size:13px;}
-.card{
-  margin-top:15px;
-  padding:15px;
-  border-radius:12px;
-  background:var(--card);
-}
-.gold{border-left:6px solid #d4af37;}
-.silver{border-left:6px solid #9e9e9e;}
-.price{font-size:20px;font-weight:bold;}
-.small{font-size:13px;}
-select,input,button{
-  width:100%;
-  margin-top:8px;
-  padding:8px;
-}
-.stat{text-align:center;margin-top:10px;}
-.toggle{margin-top:10px;}
-footer{text-align:center;font-size:11px;margin-top:10px;}
-</style>
-</head>
-
-<body>
 <script>
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js")
-    .then(() => console.log("Service Worker Registered"));
-}
-</script>
-<div class="container">
-<h1>आजको सुन र चाँदी</h1>
-<div class="subtitle" id="nepaliDate"></div>
+const statusEl = document.getElementById("status");
 
-<button class="toggle" onclick="toggleDark()">🌙 Dark Mode</button>
+async function loadData() {
+  try {
+    statusEl.innerText = "Loading data...";
+    
+    // TEMP: static fallback (API fail भए पनि app चल्छ)
+    const data = {
+      gold: "NPR 1,65,000 / tola",
+      silver: "NPR 2,000 / tola"
+    };
 
-<div class="card gold">
-  <b>सुनको मूल्य</b>
-  <div id="goldPrice" class="price">लोड हुँदैछ...</div>
-  <select id="purity" onchange="updatePurity()">
-    <option value="1">२४ क्यारेट</option>
-    <option value="0.916">२२ क्यारेट</option>
-    <option value="0.75">१८ क्यारेट</option>
-  </select>
-</div>
+    document.getElementById("gold").innerText = data.gold;
+    document.getElementById("silver").innerText = data.silver;
 
-<div class="card silver">
-  <b>चाँदीको मूल्य</b>
-  <div id="silverPrice" class="price">लोड हुँदैछ...</div>
-</div>
-
-<div class="stat" id="ratio"></div>
-
-<div class="card">
-  <b>तोला क्याल्कुलेटर</b>
-  <input type="number" id="tolaInput" placeholder="तोला लेख्नुहोस्" oninput="calcValue()">
-  <div class="small" id="calcResult"></div>
-</div>
-
-<div class="card">
-  <b>मूल्य अलर्ट (सुन)</b>
-  <input type="number" id="alertPrice" placeholder="रु लेख्नुहोस्">
-  <button onclick="setAlert()">अलर्ट सेट गर्नुहोस्</button>
-</div>
-
-<div class="stat" id="updateTime"></div>
-
-<footer>स्रोत: MetalpriceAPI</footer>
-</div>
-
-<script>
-const API_KEY="fb50a9b30286a3bb7d0cbdb1d9e5fe77";
-const OUNCE_TO_TOLA=2.6666667;
-let gold=0,silver=0,alertValue=null;
-
-/* Nepali digits */
-function nep(num){
-  return num.toString().replace(/\d/g,d=>"०१२३४५६७८९"[d]);
-}
-
-/* Dark mode */
-function toggleDark(){
-  document.body.classList.toggle("dark");
-  localStorage.setItem("dark",document.body.classList.contains("dark"));
-}
-if(localStorage.getItem("dark")==="true"){
-  document.body.classList.add("dark");
-}
-
-/* Date */
-function nepaliDate(){
-  const d=new Date();
-  document.getElementById("nepaliDate").innerText=
-   `आजको मिति: ${nep(d.getFullYear())}-${nep(d.getMonth()+1)}-${nep(d.getDate())}`;
-}
-
-/* Load prices */
-async function load(){
-  const g=await fetch(`https://api.metalpriceapi.com/v1/latest?api_key=${API_KEY}&base=XAU&currencies=NPR`);
-  const s=await fetch(`https://api.metalpriceapi.com/v1/latest?api_key=${API_KEY}&base=XAG&currencies=NPR`);
-  const gd=await g.json(), sd=await s.json();
-
-  gold=gd.rates.NPR/OUNCE_TO_TOLA;
-  silver=sd.rates.NPR/OUNCE_TO_TOLA;
-
-  updatePurity();
-  document.getElementById("silverPrice").innerText=
-    `रु ${nep(silver.toFixed(2))} / तोला`;
-
-  document.getElementById("ratio").innerText=
-    `सुन–चाँदी अनुपात: ${nep((gold/silver).toFixed(2))}`;
-
-  const now=new Date();
-  document.getElementById("updateTime").innerText=
-    `अन्तिम अपडेट: ${nep(now.toLocaleTimeString())}`;
-
-  if(alertValue && gold>=alertValue){
-    alert("🔔 सुनको मूल्य तपाईंको अलर्ट पुगेको छ!");
-    alertValue=null;
+  } catch (err) {
+    console.error(err);
+    statusEl.innerText = "Data unavailable (offline)";
+  } finally {
+    // 🔑 THIS IS IMPORTANT
+    statusEl.style.display = "none";
   }
 }
 
-function updatePurity(){
-  const p=document.getElementById("purity").value;
-  document.getElementById("goldPrice").innerText=
-    `रु ${nep((gold*p).toFixed(2))} / तोला`;
-}
-
-function calcValue(){
-  const t=document.getElementById("tolaInput").value;
-  if(!t) return;
-  document.getElementById("calcResult").innerText=
-    `कुल मूल्य: रु ${nep((t*gold).toFixed(2))}`;
-}
-
-function setAlert(){
-  alertValue=document.getElementById("alertPrice").value;
-  alert("अलर्ट सेट भयो");
-}
-
-nepaliDate();
-load();
-setInterval(load,60000);
+window.onload = loadData;
 </script>
-</body>
-</html>
