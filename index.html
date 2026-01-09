@@ -1,108 +1,108 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gold & Silver Price (Nepal)</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gold & Silver Price (Nepal)</title>
 
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#d4af37">
+  <meta name="theme-color" content="#d4af37" />
 
-<style>
-body {
-  font-family: system-ui, sans-serif;
-  background: #f4f4f4;
-  margin: 0;
-  padding: 16px;
-}
-.card {
-  background: #fff;
-  padding: 16px;
-  margin-bottom: 16px;
-  border-radius: 12px;
-  box-shadow: 0 4px 8px rgba(0,0,0,.08);
-}
-h1,h2 { margin-top: 0; }
-.price {
-  font-size: 22px;
-  font-weight: bold;
-  margin-top: 8px;
-}
-.note {
-  font-size: 13px;
-  color: #666;
-}
-</style>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f4f4f4;
+      margin: 0;
+      padding: 16px;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: #ffffff;
+      padding: 18px;
+      margin-bottom: 16px;
+      border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+    }
+
+    .price {
+      font-size: 26px;
+      font-weight: 700;
+      margin-top: 8px;
+    }
+
+    .note {
+      font-size: 13px;
+      color: #666;
+      margin-top: 10px;
+    }
+  </style>
 </head>
 
 <body>
 
-<h1>Gold & Silver Price (Nepal 🇳🇵)</h1>
+  <h1>Gold & Silver Price (Nepal 🇳🇵)</h1>
 
-<div class="card">
-<h2>Gold (per tola)</h2>
-<div class="price" id="goldPrice">Loading…</div>
-</div>
+  <div class="card">
+    <h2>Gold (per tola)</h2>
+    <div class="price" id="goldPrice">Loading…</div>
+  </div>
 
-<div class="card">
-<h2>Silver (per tola)</h2>
-<div class="price" id="silverPrice">Loading…</div>
-</div>
+  <div class="card">
+    <h2>Silver (per tola)</h2>
+    <div class="price" id="silverPrice">Loading…</div>
+  </div>
 
-<p class="note">
-Prices are estimated from international market rates and converted to NPR.
-</p>
+  <p class="note">
+    Live international prices via GoldAPI, converted to NPR (estimated).
+  </p>
 
-<script>
-const GOLD_API = "https://www.goldapi.io/api/XAU/USD";
-const SILVER_API = "https://www.goldapi.io/api/XAG/USD";
-const API_KEY = "YOUR_GOLDAPI_KEY";
+  <script>
+    // ✅ YOUR CLOUDLARE WORKER PROXY
+    const PROXY_URL = "https://goldpapi-proxy.ealpee36.workers.dev";
 
-const USD_TO_NPR = 133.5; // auto-update manually if needed
+    // Constants
+    const USD_TO_NPR = 133.5;          // Estimated rate
+    const TROY_OUNCE_TO_GRAM = 31.1034768;
+    const TOLA_TO_GRAM = 11.6638;
 
-const TROY_OUNCE_TO_GRAM = 31.1034768;
-const TOLA_TO_GRAM = 11.6638;
+    async function fetchMetal(symbol) {
+      const response = await fetch(`${PROXY_URL}?symbol=${symbol}`);
+      const data = await response.json();
 
-async function fetchMetalPrice(url) {
-  const res = await fetch(url, {
-    headers: { "x-access-token": API_KEY }
-  });
-  const data = await res.json();
-  return data.price;
-}
+      // GoldAPI returns USD per troy ounce
+      return data.price;
+    }
 
-async function updatePrices() {
-  try {
-    const goldUsdOz = await fetchMetalPrice(GOLD_API);
-    const silverUsdOz = await fetchMetalPrice(SILVER_API);
+    async function updatePrices() {
+      try {
+        const goldUsdPerOz = await fetchMetal("XAU");
+        const silverUsdPerOz = await fetchMetal("XAG");
 
-    const goldUsdTola =
-      (goldUsdOz / TROY_OUNCE_TO_GRAM) * TOLA_TO_GRAM;
-    const silverUsdTola =
-      (silverUsdOz / TROY_OUNCE_TO_GRAM) * TOLA_TO_GRAM;
+        const goldNprPerTola =
+          (goldUsdPerOz / TROY_OUNCE_TO_GRAM) *
+          TOLA_TO_GRAM *
+          USD_TO_NPR;
 
-    const goldNpr = goldUsdTola * USD_TO_NPR;
-    const silverNpr = silverUsdTola * USD_TO_NPR;
+        const silverNprPerTola =
+          (silverUsdPerOz / TROY_OUNCE_TO_GRAM) *
+          TOLA_TO_GRAM *
+          USD_TO_NPR;
 
-    document.getElementById("goldPrice").innerText =
-      `NPR ${goldNpr.toFixed(0)}`;
+        document.getElementById("goldPrice").innerText =
+          `NPR ${Math.round(goldNprPerTola).toLocaleString()}`;
 
-    document.getElementById("silverPrice").innerText =
-      `NPR ${silverNpr.toFixed(0)}`;
+        document.getElementById("silverPrice").innerText =
+          `NPR ${Math.round(silverNprPerTola).toLocaleString()}`;
 
-  } catch (e) {
-    document.getElementById("goldPrice").innerText = "Error loading data";
-    document.getElementById("silverPrice").innerText = "Error loading data";
-  }
-}
+      } catch (error) {
+        console.error(error);
+        document.getElementById("goldPrice").innerText = "Failed to load";
+        document.getElementById("silverPrice").innerText = "Failed to load";
+      }
+    }
 
-updatePrices();
-setInterval(updatePrices, 10 * 60 * 1000); // refresh every 10 min
-
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("service-worker.js");
-}
-</script>
-
-</body>
-</html>
+    updatePrices();
+    set
