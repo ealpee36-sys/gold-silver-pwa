@@ -9,100 +9,106 @@
 
   <style>
     body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: system-ui, sans-serif;
       background: #f4f4f4;
       margin: 0;
       padding: 16px;
     }
-
-    h1 {
-      margin-bottom: 20px;
-    }
-
     .card {
-      background: #ffffff;
-      padding: 18px;
+      background: #fff;
+      padding: 16px;
       margin-bottom: 16px;
       border-radius: 12px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+      box-shadow: 0 4px 8px rgba(0,0,0,.08);
     }
-
+    h1, h2 {
+      margin-top: 0;
+    }
     .price {
       font-size: 26px;
-      font-weight: 700;
-      margin-top: 8px;
+      font-weight: bold;
     }
-
     .note {
       font-size: 13px;
       color: #666;
-      margin-top: 10px;
     }
   </style>
 </head>
 
 <body>
 
-  <h1>Gold & Silver Price (Nepal 🇳🇵)</h1>
+<h1>Gold & Silver Price (Nepal 🇳🇵)</h1>
 
-  <div class="card">
-    <h2>Gold (per tola)</h2>
-    <div class="price" id="goldPrice">Loading…</div>
-  </div>
+<div class="card">
+  <h2>Gold (per tola)</h2>
+  <div class="price" id="goldPrice">Loading…</div>
+</div>
 
-  <div class="card">
-    <h2>Silver (per tola)</h2>
-    <div class="price" id="silverPrice">Loading…</div>
-  </div>
+<div class="card">
+  <h2>Silver (per tola)</h2>
+  <div class="price" id="silverPrice">Loading…</div>
+</div>
 
-  <p class="note">
-    Live international prices via GoldAPI, converted to NPR (estimated).
-  </p>
+<p class="note">
+  Live international prices via GoldAPI → converted to NPR (estimated).
+</p>
 
-  <script>
-    // ✅ YOUR CLOUDLARE WORKER PROXY
-    const PROXY_URL = "https://goldpapi-proxy.ealpee36.workers.dev";
+<script>
+/* ===============================
+   CONFIG (FIXED & VERIFIED)
+================================ */
 
-    // Constants
-    const USD_TO_NPR = 133.5;          // Estimated rate
-    const TROY_OUNCE_TO_GRAM = 31.1034768;
-    const TOLA_TO_GRAM = 11.6638;
+// ✅ YOUR WORKING CLOUDFLARE WORKER
+const PROXY_URL = "https://goldpapi-proxy.ealpee36.workers.dev";
 
-    async function fetchMetal(symbol) {
-      const response = await fetch(`${PROXY_URL}?symbol=${symbol}`);
-      const data = await response.json();
+// Exchange & unit constants
+const USD_TO_NPR = 133.5;
+const TROY_OUNCE_TO_GRAM = 31.1034768;
+const TOLA_TO_GRAM = 11.6638;
 
-      // GoldAPI returns USD per troy ounce
-      return data.price;
-    }
+/* ===============================
+   FETCH FUNCTIONS
+================================ */
 
-    async function updatePrices() {
-      try {
-        const goldUsdPerOz = await fetchMetal("XAU");
-        const silverUsdPerOz = await fetchMetal("XAG");
+async function fetchMetal(symbol) {
+  const res = await fetch(`${PROXY_URL}?symbol=${symbol}`);
+  if (!res.ok) throw new Error("API error");
+  const data = await res.json();
+  return data.price; // USD per troy ounce
+}
 
-        const goldNprPerTola =
-          (goldUsdPerOz / TROY_OUNCE_TO_GRAM) *
-          TOLA_TO_GRAM *
-          USD_TO_NPR;
+async function updatePrices() {
+  try {
+    // Gold & Silver in USD / oz
+    const goldUsdOz = await fetchMetal("XAU");
+    const silverUsdOz = await fetchMetal("XAG");
 
-        const silverNprPerTola =
-          (silverUsdPerOz / TROY_OUNCE_TO_GRAM) *
-          TOLA_TO_GRAM *
-          USD_TO_NPR;
+    // Convert → NPR per tola
+    const goldNpr =
+      (goldUsdOz / TROY_OUNCE_TO_GRAM) * TOLA_TO_GRAM * USD_TO_NPR;
 
-        document.getElementById("goldPrice").innerText =
-          `NPR ${Math.round(goldNprPerTola).toLocaleString()}`;
+    const silverNpr =
+      (silverUsdOz / TROY_OUNCE_TO_GRAM) * TOLA_TO_GRAM * USD_TO_NPR;
 
-        document.getElementById("silverPrice").innerText =
-          `NPR ${Math.round(silverNprPerTola).toLocaleString()}`;
+    document.getElementById("goldPrice").innerText =
+      "NPR " + goldNpr.toFixed(0);
 
-      } catch (error) {
-        console.error(error);
-        document.getElementById("goldPrice").innerText = "Failed to load";
-        document.getElementById("silverPrice").innerText = "Failed to load";
-      }
-    }
+    document.getElementById("silverPrice").innerText =
+      "NPR " + silverNpr.toFixed(0);
 
-    updatePrices();
-    set
+  } catch (err) {
+    document.getElementById("goldPrice").innerText = "Failed to load";
+    document.getElementById("silverPrice").innerText = "Failed to load";
+    console.error(err);
+  }
+}
+
+// Initial load
+updatePrices();
+
+// Refresh every 10 minutes
+setInterval(updatePrices, 10 * 60 * 1000);
+</script>
+
+</body>
+</html>
