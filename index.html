@@ -1,162 +1,138 @@
 <!DOCTYPE html>
-<html lang="ne">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>आजको सुन चाँदीको मूल्य</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Gold & Silver Price (Nepal)</title>
 
-  <meta name="theme-color" content="#f5c542" />
-  <link rel="manifest" href="manifest.json" />
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#d4af37"/>
 
-  <style>
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #f6f6f6;
-      margin: 0;
-      padding: 16px;
-    }
-    .card {
-      background: #fff;
-      border-radius: 12px;
-      padding: 16px;
-      margin-bottom: 16px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }
-    h1 {
-      text-align: center;
-    }
-    .price {
-      font-size: 1.4rem;
-      font-weight: bold;
-      margin-top: 8px;
-    }
-    .muted {
-      color: #666;
-      font-size: 0.9rem;
-    }
-    select, input, button {
-      width: 100%;
-      padding: 10px;
-      margin-top: 8px;
-      font-size: 1rem;
-    }
-    button {
-      background: #f5c542;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: bold;
-    }
-    footer {
-      text-align: center;
-      font-size: 0.8rem;
-      color: #666;
-      margin-top: 20px;
-    }
-  </style>
+<style>
+body {
+  font-family: system-ui, sans-serif;
+  background: #f5f5f5;
+  margin: 0;
+  padding: 16px;
+}
+.card {
+  background: white;
+  padding: 16px;
+  margin-bottom: 16px;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0,0,0,.08);
+}
+h1, h2 {
+  margin-top: 0;
+}
+label {
+  display: block;
+  margin-top: 10px;
+  font-weight: 600;
+}
+input {
+  width: 100%;
+  padding: 8px;
+  margin-top: 4px;
+}
+.price {
+  font-size: 20px;
+  font-weight: bold;
+  margin-top: 10px;
+}
+.note {
+  font-size: 13px;
+  color: #666;
+}
+</style>
 </head>
 
 <body>
 
-<h1>आजको सुन र चाँदी</h1>
-<p class="muted" style="text-align:center;">
-  मिति: <span id="today"></span>
+<h1>Gold & Silver Price (Nepal 🇳🇵)</h1>
+
+<div class="card">
+<h2>Exchange Rate</h2>
+<label>USD → NPR</label>
+<input type="number" id="usdRate" value="133.5" />
+</div>
+
+<div class="card">
+<h2>Gold</h2>
+<div class="price" id="goldEstimate">Loading…</div>
+
+<label>Manual Nepal Gold Price (NPR / tola)</label>
+<input type="number" id="goldManual" placeholder="e.g. 165000" />
+<div class="price" id="goldNepal"></div>
+
+<p class="note">
+Estimated price is calculated from international market.  
+Manual price reflects Nepal market rate.
 </p>
-
-<div class="card">
-  <h2>सुनको मूल्य</h2>
-  <select id="karat">
-    <option value="1">२४ क्यारेट</option>
-    <option value="0.916">२२ क्यारेट</option>
-    <option value="0.75">१८ क्यारेट</option>
-  </select>
-  <div id="goldPrice" class="price">लोड हुँदैछ...</div>
 </div>
 
 <div class="card">
-  <h2>चाँदीको मूल्य</h2>
-  <div id="silverPrice" class="price">लोड हुँदैछ...</div>
-</div>
+<h2>Silver</h2>
+<div class="price" id="silverEstimate">Loading…</div>
 
-<div class="card">
-  <h2>तोला क्याल्कुलेटर</h2>
-  <input type="number" id="tolaInput" placeholder="तोला संख्या" />
-  <div id="totalPrice" class="price"></div>
+<label>Manual Nepal Silver Price (NPR / tola)</label>
+<input type="number" id="silverManual" placeholder="e.g. 2000" />
+<div class="price" id="silverNepal"></div>
 </div>
-
-<footer>
-  स्रोत: GoldAPI (USD → NPR अनुमान)
-</footer>
 
 <script>
-/* ================= CONFIG ================= */
-const API_KEY = "goldapi-2jdsp19mk3w4i56-io";
-const USD_TO_NPR = 133;        // approx rate
-const OUNCE_TO_TOLA = 0.857142;
+const GOLD_API = "https://www.goldapi.io/api/XAU/USD";
+const SILVER_API = "https://www.goldapi.io/api/XAG/USD";
+const API_KEY = "YOUR_API_KEY_HERE";
 
-/* ================= DATE ================= */
-document.getElementById("today").innerText =
-  new Date().toISOString().split("T")[0];
+const TROY_OUNCE_TO_GRAM = 31.1034768;
+const TOLA_TO_GRAM = 11.6638;
 
-/* ================= LOAD PRICES ================= */
-let baseGoldPrice = 0;
-
-async function loadPrices() {
-  const goldEl = document.getElementById("goldPrice");
-  const silverEl = document.getElementById("silverPrice");
-
-  try {
-    const goldRes = await fetch("https://www.goldapi.io/api/XAU/USD", {
-      headers: { "x-access-token": API_KEY }
-    });
-    const goldData = await goldRes.json();
-
-    const silverRes = await fetch("https://www.goldapi.io/api/XAG/USD", {
-      headers: { "x-access-token": API_KEY }
-    });
-    const silverData = await silverRes.json();
-
-    baseGoldPrice = goldData.price * USD_TO_NPR * OUNCE_TO_TOLA;
-
-    updateGoldPrice();
-
-    const silverNPR =
-      (silverData.price * USD_TO_NPR * OUNCE_TO_TOLA).toFixed(0);
-
-    silverEl.innerText = `Rs. ${silverNPR} / तोला`;
-
-  } catch (e) {
-    console.warn("API fail, fallback data used");
-
-    baseGoldPrice = 165000;
-    goldEl.innerText = "Rs. 1,65,000 / तोला";
-    silverEl.innerText = "Rs. 2,000 / तोला";
-  }
+async function fetchPrice(url) {
+  const res = await fetch(url, {
+    headers: { "x-access-token": API_KEY }
+  });
+  const data = await res.json();
+  return data.price;
 }
 
-/* ================= GOLD KARAT ================= */
-function updateGoldPrice() {
-  const factor = document.getElementById("karat").value;
-  const price = (baseGoldPrice * factor).toFixed(0);
-  document.getElementById("goldPrice").innerText =
-    `Rs. ${price} / तोला`;
+async function updatePrices() {
+  const usdRate = parseFloat(document.getElementById("usdRate").value);
+
+  const goldUsdOz = await fetchPrice(GOLD_API);
+  const silverUsdOz = await fetchPrice(SILVER_API);
+
+  const goldUsdTola =
+    (goldUsdOz / TROY_OUNCE_TO_GRAM) * TOLA_TO_GRAM;
+  const silverUsdTola =
+    (silverUsdOz / TROY_OUNCE_TO_GRAM) * TOLA_TO_GRAM;
+
+  const goldNprEstimate = goldUsdTola * usdRate;
+  const silverNprEstimate = silverUsdTola * usdRate;
+
+  document.getElementById("goldEstimate").innerText =
+    `Estimated: NPR ${goldNprEstimate.toFixed(0)} / tola`;
+
+  document.getElementById("silverEstimate").innerText =
+    `Estimated: NPR ${silverNprEstimate.toFixed(0)} / tola`;
 }
 
-/* ================= CALCULATOR ================= */
-document.getElementById("tolaInput").addEventListener("input", e => {
-  const tola = e.target.value;
-  if (!tola) return;
-  const factor = document.getElementById("karat").value;
-  const total = (baseGoldPrice * factor * tola).toFixed(0);
-  document.getElementById("totalPrice").innerText =
-    `कुल मूल्य: Rs. ${total}`;
+document.getElementById("goldManual").addEventListener("input", e => {
+  document.getElementById("goldNepal").innerText =
+    e.target.value
+      ? `Nepal Market: NPR ${e.target.value} / tola`
+      : "";
 });
 
-document.getElementById("karat").addEventListener("change", updateGoldPrice);
+document.getElementById("silverManual").addEventListener("input", e => {
+  document.getElementById("silverNepal").innerText =
+    e.target.value
+      ? `Nepal Market: NPR ${e.target.value} / tola`
+      : "";
+});
 
-window.onload = loadPrices;
+updatePrices();
 
-/* ================= SERVICE WORKER ================= */
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("service-worker.js");
 }
