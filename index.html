@@ -1,44 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gold & Silver Price (Nepal)</title>
 
-<link rel="manifest" href="manifest.json" />
-<meta name="theme-color" content="#d4af37"/>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#d4af37">
 
 <style>
 body {
   font-family: system-ui, sans-serif;
-  background: #f5f5f5;
+  background: #f4f4f4;
   margin: 0;
   padding: 16px;
 }
 .card {
-  background: white;
+  background: #fff;
   padding: 16px;
   margin-bottom: 16px;
   border-radius: 12px;
-  box-shadow: 0 4px 10px rgba(0,0,0,.08);
+  box-shadow: 0 4px 8px rgba(0,0,0,.08);
 }
-h1, h2 {
-  margin-top: 0;
-}
-label {
-  display: block;
-  margin-top: 10px;
-  font-weight: 600;
-}
-input {
-  width: 100%;
-  padding: 8px;
-  margin-top: 4px;
-}
+h1,h2 { margin-top: 0; }
 .price {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: bold;
-  margin-top: 10px;
+  margin-top: 8px;
 }
 .note {
   font-size: 13px;
@@ -52,43 +40,30 @@ input {
 <h1>Gold & Silver Price (Nepal 🇳🇵)</h1>
 
 <div class="card">
-<h2>Exchange Rate</h2>
-<label>USD → NPR</label>
-<input type="number" id="usdRate" value="133.5" />
+<h2>Gold (per tola)</h2>
+<div class="price" id="goldPrice">Loading…</div>
 </div>
 
 <div class="card">
-<h2>Gold</h2>
-<div class="price" id="goldEstimate">Loading…</div>
-
-<label>Manual Nepal Gold Price (NPR / tola)</label>
-<input type="number" id="goldManual" placeholder="e.g. 165000" />
-<div class="price" id="goldNepal"></div>
+<h2>Silver (per tola)</h2>
+<div class="price" id="silverPrice">Loading…</div>
+</div>
 
 <p class="note">
-Estimated price is calculated from international market.  
-Manual price reflects Nepal market rate.
+Prices are estimated from international market rates and converted to NPR.
 </p>
-</div>
-
-<div class="card">
-<h2>Silver</h2>
-<div class="price" id="silverEstimate">Loading…</div>
-
-<label>Manual Nepal Silver Price (NPR / tola)</label>
-<input type="number" id="silverManual" placeholder="e.g. 2000" />
-<div class="price" id="silverNepal"></div>
-</div>
 
 <script>
 const GOLD_API = "https://www.goldapi.io/api/XAU/USD";
 const SILVER_API = "https://www.goldapi.io/api/XAG/USD";
-const API_KEY = "YOUR_API_KEY_HERE";
+const API_KEY = "YOUR_GOLDAPI_KEY";
+
+const USD_TO_NPR = 133.5; // auto-update manually if needed
 
 const TROY_OUNCE_TO_GRAM = 31.1034768;
 const TOLA_TO_GRAM = 11.6638;
 
-async function fetchPrice(url) {
+async function fetchMetalPrice(url) {
   const res = await fetch(url, {
     headers: { "x-access-token": API_KEY }
   });
@@ -97,41 +72,32 @@ async function fetchPrice(url) {
 }
 
 async function updatePrices() {
-  const usdRate = parseFloat(document.getElementById("usdRate").value);
+  try {
+    const goldUsdOz = await fetchMetalPrice(GOLD_API);
+    const silverUsdOz = await fetchMetalPrice(SILVER_API);
 
-  const goldUsdOz = await fetchPrice(GOLD_API);
-  const silverUsdOz = await fetchPrice(SILVER_API);
+    const goldUsdTola =
+      (goldUsdOz / TROY_OUNCE_TO_GRAM) * TOLA_TO_GRAM;
+    const silverUsdTola =
+      (silverUsdOz / TROY_OUNCE_TO_GRAM) * TOLA_TO_GRAM;
 
-  const goldUsdTola =
-    (goldUsdOz / TROY_OUNCE_TO_GRAM) * TOLA_TO_GRAM;
-  const silverUsdTola =
-    (silverUsdOz / TROY_OUNCE_TO_GRAM) * TOLA_TO_GRAM;
+    const goldNpr = goldUsdTola * USD_TO_NPR;
+    const silverNpr = silverUsdTola * USD_TO_NPR;
 
-  const goldNprEstimate = goldUsdTola * usdRate;
-  const silverNprEstimate = silverUsdTola * usdRate;
+    document.getElementById("goldPrice").innerText =
+      `NPR ${goldNpr.toFixed(0)}`;
 
-  document.getElementById("goldEstimate").innerText =
-    `Estimated: NPR ${goldNprEstimate.toFixed(0)} / tola`;
+    document.getElementById("silverPrice").innerText =
+      `NPR ${silverNpr.toFixed(0)}`;
 
-  document.getElementById("silverEstimate").innerText =
-    `Estimated: NPR ${silverNprEstimate.toFixed(0)} / tola`;
+  } catch (e) {
+    document.getElementById("goldPrice").innerText = "Error loading data";
+    document.getElementById("silverPrice").innerText = "Error loading data";
+  }
 }
 
-document.getElementById("goldManual").addEventListener("input", e => {
-  document.getElementById("goldNepal").innerText =
-    e.target.value
-      ? `Nepal Market: NPR ${e.target.value} / tola`
-      : "";
-});
-
-document.getElementById("silverManual").addEventListener("input", e => {
-  document.getElementById("silverNepal").innerText =
-    e.target.value
-      ? `Nepal Market: NPR ${e.target.value} / tola`
-      : "";
-});
-
 updatePrices();
+setInterval(updatePrices, 10 * 60 * 1000); // refresh every 10 min
 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("service-worker.js");
